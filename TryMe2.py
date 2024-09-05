@@ -1,11 +1,9 @@
 """
 ### 2 ###
+Hint: Alt+Z i VS Code (Windows)
 Denne animation demonstrerer at mit måle-udstyr ikke var kalibret. Der forventes en vinkelhastighed på nul, når pendulet står stille. Det står stille i slutningen (~170-190s) og antiderivativen svarende til vinklen burde altså være en vandret linje, men der ses en tydelig hældning på linjen, når der zoomes ind. Hældningen på denne linje svarer til det vinklehastigheden er offsat med.
 """
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 
 
@@ -49,12 +47,31 @@ antiderivative1 = antiderivative(ts1, omegas1)
 
 mask_line = (ts1 > 170) & (ts1 < 190)
 
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
 
 fig, ax = plt.subplots()
-plt.plot(ts1, antiderivative1, color='C0')
-plt.plot(ts1[mask_line], antiderivative1[mask_line], color="red")
+plt.plot(ts1, antiderivative1)
+plt.plot(ts1[mask_line], antiderivative1[mask_line], color="red", label="Sted der burde være vandret")
 plt.title("Antiderivativen svarende til vinklen")
-plt.show()
+plt.legend()
 
+def logarithmic(xs, y0, y1, a):
+    return (np.exp(a * xs) - 1) * (y0 - y1) / (1 - np.exp(a)) + y0
+
+
+frames = 256
+
+a = -7
+
+x_mins = logarithmic(np.linspace(0, 1, frames), -100, 143, a)
+x_maxs = logarithmic(np.linspace(0, 1, frames), np.max(ts1) + 100, 198, a)
+y_mins = logarithmic(np.linspace(0, 1, frames), np.min(antiderivative1) - 100, -329.45, a)
+y_maxs = logarithmic(np.linspace(0, 1, frames), np.max(antiderivative1) + 100, -328.92, a)
+
+
+# Animation
+for i in range(frames):
+    ax.set_xlim(x_mins[i], x_maxs[i])
+    ax.set_ylim(y_mins[i], y_maxs[i])
+    plt.pause(0.05)
+    # plt.savefig(f"GIF1/image{i}.png")  # For at gemme billedet og lave en GIF
+plt.show()

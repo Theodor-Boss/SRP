@@ -1,5 +1,6 @@
 """
 ### 1 ###
+Hint: Alt+Z i VS Code (Windows)
 Denne fil starter en animation af et fysisk pendul og viser samtidig faserummet. Den samme animation kan findes som en GIF på min hjemmeside:
 https://theodormyhre.dk/projekt3/#evolution
 """
