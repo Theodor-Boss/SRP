@@ -1,12 +1,17 @@
 """
-### 2 ###
-Ikke færdig endnu
+### 4 ###
+Dette script tager de udvundne data for pendulet og kalibrerer
+vinkelhastigheden. Dette gøres ved at tilpasse en lineær model til
+en stamfunktion for vinkelhastigheden for den del af dataene, hvor pendulet er i
+hvile. Hældningen af ​​denne model trækkes derefter fra vinkelhastigheden
+for hele datasættet, for at få de "ægte" vinkelhastigheder.
+
 """
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
 
 
 extracted_data1 = "extracted_data1.npz"
@@ -45,49 +50,134 @@ def antiderivative(xs, ys):
     return integrals  # dvs. det ubestemte integral for y(x) gennem (xs[0],0)
 
 
-# antiderivative1 = antiderivative(ts1, omegas1)
+def calibrate_omega(ts, omegas, hvile):
+    """
+    "hvile" er en tuple som angiver
+    tidsintervallet, pendulet er i hvile.
+    """
+    stamfunktion = antiderivative(ts, omegas)
+    mask_hvile = (ts >= hvile[0]) & (ts < hvile[1])
+    X_train, X_test, y_train, y_test = train_test_split(
+        ts[mask_hvile].reshape(-1, 1), stamfunktion[mask_hvile],
+        test_size=0.2, random_state=42
+    )
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    slope = model.coef_[0]
+    kalibreret_omegas = omegas - slope
+    return kalibreret_omegas, r2, mse
 
-mask_rest = ts1 < 170
-mask_line = (ts1 >= 170) & (ts1 < 190)
-mask_noise = ts1 >= 190
 
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Brugt til at finde frem til hvile-intervallerne som er hardcodet nedenfor
+"""
+plt.plot(ts1, omegas1)
+plt.show()
+
+plt.plot(ts2, omegas2)
+plt.show()
+
+plt.plot(ts3, omegas3)
+plt.show()
+
+plt.plot(ts4, omegas4)
+plt.show()
+
+plt.plot(ts5, omegas5)
+plt.show()
+sys.exit()
+"""
+
+kalibreret_omegas1, r2_1, mse1 = calibrate_omega(ts1, omegas1, (170, 192))
+kalibreret_omegas2, r2_2, mse2 = calibrate_omega(ts2, omegas2, (179, 211))
+kalibreret_omegas3, r2_3, mse3 = calibrate_omega(ts3, omegas3, (167, 199))
+kalibreret_omegas4, r2_4, mse4 = calibrate_omega(ts4, omegas4, (162, 291))
+kalibreret_omegas5, r2_5, mse5 = calibrate_omega(ts5, omegas5, (170, 251))
 
 
-# plt.plot(ts1, antiderivative1, color='C0')
-# plt.plot(ts1[mask_line], antiderivative1[mask_line], color="red")
+# Gemmer de kalibrerede vinkelhastigheder til den videre databehandling
+calibrated_omegas1 = "calibrated_omegas1.npz"
+calibrated_omegas2 = "calibrated_omegas2.npz"
+calibrated_omegas3 = "calibrated_omegas3.npz"
+calibrated_omegas4 = "calibrated_omegas4.npz"
+calibrated_omegas5 = "calibrated_omegas5.npz"
 
-def logarithmic(xs, y0, y1, a):
-    return (np.exp(a * xs) - 1) * (y0 - y1) / (1 - np.exp(a)) + y0
+np.savez(calibrated_omegas1, ts=ts1, calibrated_omegas=kalibreret_omegas1)
+np.savez(calibrated_omegas2, ts=ts2, calibrated_omegas=kalibreret_omegas2)
+np.savez(calibrated_omegas3, ts=ts3, calibrated_omegas=kalibreret_omegas3)
+np.savez(calibrated_omegas4, ts=ts4, calibrated_omegas=kalibreret_omegas4)
+np.savez(calibrated_omegas5, ts=ts5, calibrated_omegas=kalibreret_omegas5)
 
 
-frames = 256
+# Statistiske deskriptorer:
+"""
+print(r2_1)
+print(mse1)
+print()
 
-a = -7
+print(r2_2)
+print(mse2)
+print()
 
-x_mins = logarithmic(np.linspace(0, 1, frames), np.min(ts1) - 10, 158, a)
-x_maxs = logarithmic(np.linspace(0, 1, frames), np.max(ts1), 198, a)
-y_mins = logarithmic(np.linspace(0, 1, frames), np.min(omegas1) - 5, -0.011, a)
-y_maxs = logarithmic(np.linspace(0, 1, frames), np.max(omegas1) + 5, 0.018, a)
+print(r2_3)
+print(mse3)
+print()
 
+print(r2_4)
+print(mse4)
+print()
+
+print(r2_5)
+print(mse5)
+print()
+"""
+
+
+# Koden nedenfor plotter stamfunktioner til hver af de fem seriers kalibrerede vinkelhastigheder.
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
-plt.plot(ts1[mask_rest], omegas1[mask_rest], color='C0')
-plt.plot(ts1[mask_line], omegas1[mask_line], color="red", label="Sted der burde være nul")
-plt.plot(ts1[mask_noise], omegas1[mask_noise], color="magenta", label="Rystelser efter")
-
-ax.axhline(0, color='black')
+ax.plot(ts1, antiderivative(ts1, kalibreret_omegas1))
+ax.axhline(0, color="black")
 ax.set_xlabel("Tid")
-ax.set_ylabel("Vinkelhastighed")
-plt.title("Ikkekalibrerede vinkelhastighed")
-plt.legend(loc='lower center')
+ax.set_title("En stamfunktion til kalibreret vinkelhastighed 1")
 
-# Animation
-for i in range(frames):
-    ax.set_xlim(x_mins[i], x_maxs[i])
-    ax.set_ylim(y_mins[i], y_maxs[i])
-    # plt.pause(0.05)
-    plt.savefig(f"GIF3/image{i}.png")  # For at gemme billederne og lave en GIF
+plt.show()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ax.plot(ts2, antiderivative(ts2, kalibreret_omegas2))
+ax.axhline(0, color="black")
+ax.set_xlabel("Tid")
+ax.set_title("En stamfunktion til kalibreret vinkelhastighed 2")
+
+plt.show()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ax.plot(ts3, antiderivative(ts3, kalibreret_omegas3))
+ax.axhline(0, color="black")
+ax.set_xlabel("Tid")
+ax.set_title("En stamfunktion til kalibreret vinkelhastighed 3")
+
+plt.show()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ax.plot(ts4, antiderivative(ts4, kalibreret_omegas4))
+ax.axhline(0, color="black")
+ax.set_xlabel("Tid")
+ax.set_title("En stamfunktion til kalibreret vinkelhastighed 4")
+
+plt.show()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ax.plot(ts5, antiderivative(ts5, kalibreret_omegas5))
+ax.axhline(0, color="black")
+ax.set_xlabel("Tid")
+ax.set_title("En stamfunktion til kalibreret vinkelhastighed 5")
 
 plt.show()
