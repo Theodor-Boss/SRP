@@ -1,6 +1,6 @@
 """
-### 1 ###
-Denne fil opretter for hver csv-fil en .npz-fil, der kun indeholder tids-værdierne og vinkelhastighed-værdierne.
+### 0 ###
+Ikke så meget at prøve i denne fil. Denne fil opretter for hver csv-fil en .npz-fil, der kun indeholder tids-værdierne og vinkelhastighed-værdierne.
 """
 import numpy as np
 

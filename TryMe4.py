@@ -1,10 +1,13 @@
 """
 ### 4 ###
-Dette script tager de udvundne data for pendulet og kalibrerer
-vinkelhastigheden. Dette gøres ved at tilpasse en lineær model til
-en stamfunktion for vinkelhastigheden for den del af dataene, hvor pendulet er i
-hvile. Hældningen af ​​denne model trækkes derefter fra vinkelhastigheden
-for hele datasættet, for at få de "ægte" vinkelhastigheder.
+Dette script tager de udvundne data for
+pendulet og kalibrerer vinkelhastigheden.
+Dette gøres ved at tilpasse en lineær model til
+en stamfunktion for vinkelhastigheden for den
+del af dataene, hvor pendulet er i hvile.
+Hældningen af ​​denne model trækkes derefter
+fra vinkelhastigheden for hele datasættet,
+for at få de "ægte" vinkelhastigheder.
 
 """
 import numpy as np
@@ -98,6 +101,7 @@ kalibreret_omegas5, r2_5, mse5 = calibrate_omega(ts5, omegas5, (170, 251))
 
 
 # Gemmer de kalibrerede vinkelhastigheder til den videre databehandling
+"""
 calibrated_omegas1 = "calibrated_omegas1.npz"
 calibrated_omegas2 = "calibrated_omegas2.npz"
 calibrated_omegas3 = "calibrated_omegas3.npz"
@@ -109,7 +113,7 @@ np.savez(calibrated_omegas2, ts=ts2, calibrated_omegas=kalibreret_omegas2)
 np.savez(calibrated_omegas3, ts=ts3, calibrated_omegas=kalibreret_omegas3)
 np.savez(calibrated_omegas4, ts=ts4, calibrated_omegas=kalibreret_omegas4)
 np.savez(calibrated_omegas5, ts=ts5, calibrated_omegas=kalibreret_omegas5)
-
+"""
 
 # Statistiske deskriptorer:
 """
@@ -135,7 +139,9 @@ print()
 """
 
 
-# Koden nedenfor plotter stamfunktioner til hver af de fem seriers kalibrerede vinkelhastigheder.
+# Koden nedenfor plotter stamfunktioner
+# til hver af de fem seriers
+# kalibrerede vinkelhastigheder.
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
