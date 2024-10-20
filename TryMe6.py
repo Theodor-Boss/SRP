@@ -91,7 +91,9 @@ def derivative(xs, ys, slope0_idx, slope0):
 my_xs = np.array([0, 1,   2, 3,   4, 5])
 my_ys = np.array([0, 3.5, 6, 7.5, 8, 7.5])
 my_derivative = derivative(my_xs, my_ys, 0, 4.)
-print(my_derivative)
+# print(my_derivative)
+
+
 
 
 # 0) Hvile-intervallerne:
@@ -156,6 +158,10 @@ my_slope = 0
 xlim1, ylim1 = None, None
 xlim2, ylim2 = None, None
 
+interupt_t = 164.4
+
+my_idx = np.argmin(np.abs(ts1 - interupt_t))
+init_my_slope = kalibreret_omegas1[my_idx]
 
 def update_plot(my_slope):
     global xlim1, ylim1
@@ -165,7 +171,10 @@ def update_plot(my_slope):
         xlim2 = ax2.get_xlim()
         ylim2 = ax2.get_ylim()
 
-    alphas1 = derivative(ts1, kalibreret_omegas1, hvile_idx, my_slope)
+    kalibreret_omegas1[my_idx] = init_my_slope + my_slope
+
+    # alphas1 = derivative(ts1, kalibreret_omegas1, hvile_idx, my_slope)
+    alphas1 = derivative(ts1, kalibreret_omegas1, my_idx - 10, 0)
 
     alphas1_dot = antiderivative(ts1, alphas1)
 
@@ -173,15 +182,21 @@ def update_plot(my_slope):
     ax2.clear()
 
     ax1.plot(ts1, alphas1, color="C0")
-    ax1.axvline(ts1[hvile_idx], color="C1")
+    # ax1.axvline(ts1[hvile_idx], color="C1")
     ax1.axhline(0, color="black")
 
     ax1.set_xlabel("Tid")
     ax1.set_ylabel("Vinkelacceleration")
 
-    ax2.plot(ts1, kalibreret_omegas1, color="C0")
-    ax2.plot(ts1, alphas1_dot + (kalibreret_omegas1[0] - alphas1_dot[0]), color="C1")
-
+    # ax2.plot(ts1, kalibreret_omegas1, color="C0")
+    ax2.plot(ts1, kalibreret_omegas1, 'o', color="C1")
+    """if np.random.random() > 0.5:
+        # ax2.plot(ts1[:-1], (np.diff(alphas1)), 'o', color="C1")
+    else:
+        # ax2.plot(ts1[:-1], (np.diff(alphas1)), 'o', color="C2")
+        ax2.plot(ts1, kalibreret_omegas1, 'o', color="C2")
+    # ax2.plot(ts1, alphas1_dot + (kalibreret_omegas1[0] - alphas1_dot[0]), color="C1")
+    """
     fig.suptitle(f"Vinkelacceleration 1. Slope = {my_slope:.3f}")
     if xlim1 is not None:
         ax1.set_xlim(xlim1)
@@ -202,9 +217,9 @@ def update_plot(my_slope):
 def on_scroll(event):
     global my_slope
     if event.button == "up":
-        my_slope += 0.1
+        my_slope += 0.005
     elif event.button == "down":
-        my_slope -= 0.1
+        my_slope -= 0.005
     update_plot(my_slope)
 
 

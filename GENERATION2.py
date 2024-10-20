@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import time
-import sys
+from collections import deque 
 
 
 def load_data():
@@ -41,6 +41,12 @@ def fitness(smooth_curve, data, rezz, data_ownership):
 
     curviness = np.sum(np.diff(my_lines[:, 0]) ** 2)
 
+    """curviness = np.sum(
+        np.sqrt(
+            np.diff(my_xs_nano) ** 2 + np.diff(my_ys_nano) ** 2
+        )
+    )"""
+
     a_vec = my_lines[data_ownership, 0]
     b_vec = my_lines[data_ownership, 1]
     loyalty_vectorized = np.sum(
@@ -50,21 +56,24 @@ def fitness(smooth_curve, data, rezz, data_ownership):
 
 
 def simulation(shared_array, xs_nano, x_data, y_data, rezz, data_ownership, balance):
-    ys_nano = np.zeros_like(xs_nano)
+    ys_nano = np.full_like(xs_nano, -7.4)
     my_curviness, my_loyalty = fitness((xs_nano, ys_nano), (x_data, y_data), rezz, data_ownership)
     my_total_fitness = my_curviness + my_loyalty * balance
 
-    while True:
-        # randomness = np.random.randint(0, rezz)
-        new_ys_nano = ys_nano.copy()
-        k = 0.1
-        x0 = np.random.uniform(np.min(xs_nano), np.max(xs_nano))
-        y0 = np.random.uniform(-0.0003, 0.0003)
-        add_on = np.exp(-((xs_nano - x0) / k) ** 2) * y0
-        new_ys_nano = new_ys_nano + add_on
-        # new_ys_nano = new_ys_nano + (np.random.random(rezz) * 2 - 1) * 0.000314
 
-        # new_ys_nano[randomness] = new_ys_nano[randomness] + (np.random.random() * 2 - 1) * 0.314
+    learning_rate = 0.05
+    counter = 0
+
+    ups = -1
+    downs = 0
+
+    while True:
+        new_ys_nano = ys_nano.copy()
+
+        ###
+        add_on = np.random.uniform(-1., 1., new_ys_nano.shape) * learning_rate
+        new_ys_nano = new_ys_nano + add_on
+        ###
 
         new_my_curviness, new_my_loyalty = fitness(
             (xs_nano, new_ys_nano), (x_data, y_data), rezz, data_ownership
@@ -77,12 +86,17 @@ def simulation(shared_array, xs_nano, x_data, y_data, rezz, data_ownership, bala
             my_total_fitness = new_my_total_fitness
             ys_nano = new_ys_nano
 
+            ups = np.sqrt(my_curviness / (rezz - 2))
+
             with shared_array.get_lock():
                 shared_array[:rezz] = ys_nano
-                shared_array[-3:] = [my_curviness, my_loyalty, my_total_fitness]
-                # shared_array[-1] = my_total_fitness
+                shared_array[-5:] = [my_curviness, my_loyalty, my_total_fitness, ups, downs]
 
-        time.sleep(0.001)  # Small delay to prevent excessive CPU usage
+        
+
+        counter += 1
+
+        # time.sleep(2)  # Small delay to prevent excessive CPU usage
 
 
 def visualization(shared_array, xs_nano, x_data, y_data, rezz):
@@ -91,7 +105,6 @@ def visualization(shared_array, xs_nano, x_data, y_data, rezz):
     )
     line, = ax1.plot(xs_nano, np.zeros_like(xs_nano))
     eurowind, = ax1.plot(x_data, y_data, 'o', markersize=3)
-    print("A line inside definition of visualization")
     ax1.set_title("Smooth curve")
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Angular velocity")
@@ -99,6 +112,8 @@ def visualization(shared_array, xs_nano, x_data, y_data, rezz):
     text_loyalty = ax2.text(0.1, 0.25, "", transform=ax2.transAxes)
     text_curviness = ax2.text(0.1, 0.5, "", transform=ax2.transAxes)
     text_total_fitness = ax2.text(0.1, 0.75, "", transform=ax2.transAxes)
+    text_ups = ax2.text(0.6, 0.25, "", transform=ax2.transAxes)
+    text_downs = ax2.text(0.6, 0.5, "", transform=ax2.transAxes)
     ax2.set_title("Fitness Metrics")
     ax2.axis('off')
 
@@ -111,15 +126,16 @@ def visualization(shared_array, xs_nano, x_data, y_data, rezz):
             data = np.frombuffer(shared_array.get_obj()).copy()
             # TODO Data: bad name
         ys = data[:rezz]
-        curviness, loyalty, total_fitness = data[-3:]
-        # total_fitness = data[-1]
+        curviness, loyalty, total_fitness, ups, downs = data[-5:]
 
         line.set_ydata(ys)
         text_loyalty.set_text(f"Loyalty: {loyalty:.6f}")
         text_curviness.set_text(f"Curviness: {curviness:.6f}")
         text_total_fitness.set_text(f"Total fitness: {total_fitness:.6f}")
+        text_ups.set_text(f"  Ups: {ups}")
+        text_downs.set_text(f"Downs: {downs}")
 
-        return line, text_curviness, text_loyalty, text_total_fitness
+        return line, text_curviness, text_loyalty, text_total_fitness, text_ups, text_downs
 
     ani = FuncAnimation(fig, update, interval=100, blit=True, cache_frame_data=False)
     plt.tight_layout()
@@ -131,7 +147,9 @@ def main():
 
     data = load_data()
 
-    x_data, y_data = data[0][0][:100], data[0][1][:100]
+    start, stop = 600, 620
+
+    x_data, y_data = data[0][0][start:stop], data[0][1][start:stop]
 
     """
     room = np.mean(np.diff(x_data)) / 2.
@@ -141,8 +159,8 @@ def main():
     y_data = y_data + np.random.uniform(-room_y, room_y, y_data.size)
     """
 
-    rezz = 100
-    balance = 4000.  # Desto højere, desto mere loyal. Desto lavere, desto glattere
+    rezz = 30
+    balance = 300.  # Desto højere, desto mere loyal. Desto lavere, desto glattere
 
     xs_nano = np.linspace(np.min(x_data), np.max(x_data), rezz)
 
@@ -155,7 +173,7 @@ def main():
 
     print("Data preparation complete")
 
-    shared_array = mp.Array('d', rezz + 3)
+    shared_array = mp.Array('d', rezz + 5)
     sim_process = mp.Process(target=simulation, args=(shared_array, xs_nano, x_data, y_data, rezz, data_ownership, balance))
     vis_process = mp.Process(target=visualization, args=(shared_array, xs_nano, x_data, y_data, rezz))
 
